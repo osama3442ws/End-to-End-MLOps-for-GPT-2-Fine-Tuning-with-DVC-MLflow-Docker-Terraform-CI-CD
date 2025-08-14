@@ -1,4 +1,7 @@
 # ✨ Fine-Tune GPT-2 with DVC, MLflow, Docker, Terraform & CI/CD
+## 📊 Architecture Diagram
+
+![Architecture Diagram](Screenshot%202025-07-23%20090851.png)  
 
 ## 📜 Project Overview
 
