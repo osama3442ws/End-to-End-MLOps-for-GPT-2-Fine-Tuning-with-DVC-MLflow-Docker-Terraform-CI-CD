@@ -1,213 +1,273 @@
-# Fine-Tuned GPT-2 Story Generator
+Got it ✅
+I’ll merge the Terraform section into the **emoji-styled English README** I prepared earlier so you’ll have one clean, unified `README.md` that covers **pipeline + Terraform infrastructure + how to run everything**.
 
-This project fine-tunes a GPT-2 model on a creative writing dataset to generate short stories based on a given prompt. The project is structured to be modular and easy to maintain, following common practices in software engineering.
+Here’s the final version:
 
-## Project Structure
+---
 
-```
+# ✨ Fine-Tune GPT-2 with DVC, MLflow, Docker, Terraform & CI/CD
+
+## 📜 Project Overview
+
+Fine-tune GPT-2 on a creative-writing dataset, track experiments, and version data/models with production-friendly tooling:
+
+* 📦 **DVC** for data/model versioning & reproducible pipelines
+* 📊 **MLflow** for experiment tracking
+* ☁️ **AWS S3** for remote storage of large artifacts
+* 🐳 **Docker & Docker Compose** for consistent runtime
+* 🏗️ **Terraform** to provision AWS infrastructure
+* 🤖 **GitHub Actions** for CI/CD automation
+
+**Result:**
+📂 `fine_tuned_gpt2/` → fine-tuned model
+📄 `metrics.json` → DVC metrics
+📝 `artifacts/samples/` → sample generations
+
+---
+
+## 🏗️ Architecture (High Level)
+
+* 📂 Code & pipeline definitions → **Git** (this repo)
+* ⚙️ **DVC** orchestrates the pipeline & stores big files in **S3**
+* 📊 **MLflow** logs metrics/params for every training run
+* 🐳 **Docker** ensures identical environments locally & in CI
+* 🏗️ **Terraform** provisions S3, ECR, EC2, IAM roles, and security groups
+* 🔄 **GitHub Actions** runs `dvc repro` on push → pushes artifacts to S3
+
+📌 Diagram: `Screenshot 2025-07-23 090851.png`
+
+---
+
+## 💻 Tech Stack
+
+| Purpose           | Tools                         |
+| ----------------- | ----------------------------- |
+| **Model**         | 🤗 `transformers` (GPT-2)     |
+| **Data**          | 🗂 `datasets`, `pandas`       |
+| **Tracking**      | 📊 `mlflow`                   |
+| **Orchestration** | ⚙️ `dvc`                      |
+| **Runtime**       | 🐳 `docker`, `docker-compose` |
+| **Storage**       | ☁️ AWS S3                     |
+| **Infra**         | 🏗️ Terraform                 |
+| **CI/CD**         | 🤖 GitHub Actions             |
+
+---
+
+## 📂 Repository Structure
+
+```text
 .
-├── config.py               # All configurations and hyperparameters
-├── data_processing.py      # Scripts for data loading and preprocessing
-├── model.py                # Model training and evaluation logic
-├── inference.py            # Script for generating text with the trained model
-├── main.py                 # Main entry point to run training or inference
-├── requirements.txt        # Project dependencies
-├── fine-tuned_gpt2/        # Output directory for the saved model
-├── results/                # Output directory for training results
-├── mlruns/                 # MLflow tracking data
-└── README.md               # This file
+├── config.py                 # Loads config, overrides from params.yaml
+├── params.yaml               # Single source of hyperparameters and paths
+├── dvc.yaml                  # Pipeline definition
+├── data_processing.py        # Data cleaning, tokenization, split
+├── model.py                  # Training + MLflow logging
+├── inference.py              # CLI text generation
+├── main.py                   # Entry point
+├── requirements.txt          # Python dependencies
+├── Dockerfile                # Container setup
+├── docker-compose.yml        # Services for training/MLflow/Gradio
+├── creative_writing_dataset.csv
+├── cleaned_creative_writing_dataset.csv
+├── terraform/                # Infrastructure as code
+└── .github/workflows/dvc-repro.yml  # CI workflow
 ```
 
-## Features
+---
 
-- **Fine-tuning GPT-2**: Leverages the `transformers` library to fine-tune the GPT-2 model.
-- **Perplexity Evaluation**: Uses Perplexity as the primary metric for model evaluation, which is more suitable for language models than accuracy.
-- **MLflow Integration**: Tracks experiments, parameters, and metrics using MLflow.
-- **Modular Structure**: Code is organized into separate modules for configuration, data processing, training, and inference.
-- **Command-Line Interface**: A simple CLI to switch between training and generation modes.
+## 🔄 How the Pipeline Works
 
-## DVC Integration
+**Stages in `dvc.yaml`:**
 
-This project uses DVC with an S3 remote to version datasets and model artifacts and to describe the pipeline via `dvc.yaml` and hyperparameters in `params.yaml`.
+1. **🧹 preprocess**
 
-Quick start:
+   * Cleans dataset → `cleaned_creative_writing_dataset.csv` (DVC-tracked)
 
-```
+2. **🔤 tokenize**
+
+   * Tokenizes with GPT-2 tokenizer → `artifacts/processed/` (DVC-tracked)
+
+3. **🧠 train**
+
+   * Fine-tunes GPT-2, logs to MLflow, creates `metrics.json`
+
+4. **✍️ generate**
+
+   * Generates sample text → `artifacts/samples/sample.txt`
+
+💡 **Why DVC?** Guarantees reproducibility & versions large files.
+💡 **Why MLflow?** Logs hyperparams & metrics for comparison.
+
+---
+
+## ⚙️ Configuration
+
+**`params.yaml`** = single source of truth:
+
+* 📂 Data: file paths & column names
+* 🧠 Model: name, output directory
+* 🎯 Training: learning rate, batch size, epochs, weight decay, early stopping, max length, test size
+* ✍️ Inference: generation length, temperature, top\_k, prompt
+
+**`config.py`** loads defaults & overrides from `params.yaml`.
+
+---
+
+## 🚀 Getting Started (Local)
+
+**Prerequisites:**
+
+* Python 3.10+
+* Git
+* AWS CLI (optional)
+* S3 bucket (optional)
+
+```powershell
+python -m venv .venv; .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-dvc init
-dvc remote add -d s3remote s3://<your-bucket>/dvcstore
-dvc add creative_writing_dataset.csv
-git add creative_writing_dataset.csv.dvc .gitignore
-git commit -m "Track raw data with DVC"
-dvc push
 
-# Reproduce the pipeline
+# DVC init
+dvc init
+
+# Optional: configure S3
+$env:AWS_ACCESS_KEY_ID="..."
+$env:AWS_SECRET_ACCESS_KEY="..."
+$env:AWS_DEFAULT_REGION="eu-west-1"
+dvc remote add -d s3remote s3://<your-bucket>/dvcstore
+dvc remote modify s3remote region eu-west-1
+```
+
+Run pipeline:
+
+```powershell
 dvc repro
 dvc push
 ```
 
-## Setup
+---
 
-1.  **Clone the repository (if applicable)**
-    ```bash
-    git clone <repository_url>
-    cd <repository_name>
-    ```
+## 🐳 Docker & Docker Compose
 
-2.  **Create a virtual environment (recommended)**
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
-    ```
-
-3.  **Install dependencies**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-## How to Run
-
-The `main.py` script is the main entry point for the project.
-
-### 1. Train the Model
-
-To fine-tune the GPT-2 model on the provided dataset, run the following command:
-
-```bash
-python main.py --mode train
+```powershell
+docker build -t creative-gpt2 .
+$env:ECR_REPOSITORY="creative-gpt2"; $env:IMAGE_TAG="local"
+docker compose up -d
 ```
 
-This will:
-- Process the data from `cleaned_creative_writing_dataset.csv`.
-- Train the model using the parameters in `config.py`.
-- Save the fine-tuned model to the `./fine_tuned_gpt2` directory.
-- Log all parameters and metrics to MLflow.
+* **train** → runs `dvc pull → train → dvc push`
+* **gradio** → serves model on `http://localhost:7860`
+* **mlflow** → UI on `http://localhost:5000`
 
-### 2. Generate a Story
+---
 
-Once the model is trained, you can generate a story using a prompt.
+## 🏗️ Infrastructure with Terraform
+
+### 📦 What Terraform Provisions
+
+* ☁️ **S3 Bucket** (`<project_name>-dvc-bucket`) — Remote storage for DVC artifacts
+* 📦 **ECR Repository** — Stores Docker images for deployment
+* 🔐 **Security Group** — Opens 22 (SSH), 7860 (Gradio), 5000 (MLflow)
+* 🖥 **EC2 Instance (Ubuntu)** — Runs Docker & Docker Compose
+* 👤 **IAM Role** — Grants EC2 access to S3 and ECR without hardcoding keys
+* 📤 **Outputs**:
+
+  * `dvc_bucket_name` — DVC remote
+  * `ecr_repository_url` — Docker image tag
+  * `ec2_public_ip` — SSH access
+
+### 🔗 How It Fits the Pipeline
+
+* **DVC remote** → S3 bucket created by Terraform
+* **Docker image** → Built locally/CI and pushed to ECR
+* **EC2 runtime** → Pulls image and runs pipeline via Docker Compose
+* **Ports** → Open for accessing Gradio & MLflow from your machine
+
+### 🚀 Deploy with Terraform
 
 ```bash
-python main.py --mode generate
+cd terraform
+terraform init
+terraform plan -var "aws_region=eu-west-1" -var "project_name=llmops-gpt2" -var "key_name=<your-keypair>"
+terraform apply -auto-approve -var "aws_region=eu-west-1" -var "project_name=llmops-gpt2" -var "key_name=<your-keypair>"
 ```
 
-To use a custom prompt, use the `--prompt` argument:
+Copy the outputs:
+
+* `dvc_bucket_name` → `s3://<dvc_bucket_name>/dvcstore`
+* `ecr_repository_url` → for tagging/pushing image
+* `ec2_public_ip` → `ssh ubuntu@<ec2_public_ip>`
+
+### 🐳 Build & Push Image to ECR
 
 ```bash
-python main.py --mode generate --prompt "In a world where the sky is made of glass,"
+aws ecr get-login-password --region <region> | docker login --username AWS --password-stdin <account>.dkr.ecr.<region>.amazonaws.com
+docker build -t creative-gpt2 .
+docker tag creative-gpt2:latest <ecr_repository_url>:latest
+docker push <ecr_repository_url>:latest
 ```
 
-## Configuration
-
-All project settings can be modified in the `config.py` file. This includes file paths, model parameters, and training hyperparameters.
-
-## Running the Project with Docker and Docker Compose
-
-### 1. Build images and run services
+### ▶️ Run on EC2
 
 ```bash
-cd New\ folder
-# Build images and run all services (training, Gradio, MLflow UI)
-docker-compose up --build
+ssh ubuntu@<ec2_public_ip>
+sudo apt-get update && sudo apt-get install -y git
+git clone <your-repo.git> app && cd app
+export ECR_REPOSITORY="<ecr_repository_url>"
+export IMAGE_TAG="latest"
+docker compose up -d
 ```
 
-### 2. Run each service separately
+### 🔒 Security Notes
 
-- **Train the model only:**
-  ```bash
-  docker-compose run train
+* Security group currently allows `0.0.0.0/0` on 22/7860/5000 — restrict for production
+* `force_destroy = true` on S3 eases cleanup but deletes all objects — remove for safety
+
+---
+
+## 🤖 CI/CD with GitHub Actions
+
+* Runs on every push to `main`
+* Installs deps + `dvc[s3]`
+* Configures AWS from secrets
+* `dvc pull → dvc repro → dvc push`
+* Uploads `metrics.json` + samples
+
+**Required Secrets:**
+
+* `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
+* `DVC_REMOTE_URL` = `s3://<dvc_bucket_name>/dvcstore`
+
+---
+
+## 📈 Typical End-to-End Flow
+
+1. Edit `params.yaml`
+2. Commit & push
+3. CI runs pipeline, uploads artifacts to S3
+4. Gradio pulls newest model
+5. Check MLflow/metrics.json for results
+
+---
+
+## 🛠 Tips & Troubleshooting
+
+* Don’t commit large files — let DVC track them
+* Verify AWS credentials if S3 auth fails
+* Ensure internet access for Hugging Face downloads
+* Quick experiments:
+
+  ```powershell
+  dvc exp run -S training.num_train_epochs=5
   ```
-- **Run Gradio interface only:**
-  ```bash
-  docker-compose up gradio
-  ```
-- **Run MLflow UI only:**
-  ```bash
-  docker-compose up mlflow
-  ```
 
-### 3. Accessing the services
-- **Gradio interface:** [http://localhost:7860](http://localhost:7860)
-- **MLflow UI:** [http://localhost:5000](http://localhost:5000)
+---
 
-### 4. Important Notes
-- You can modify environment variables (such as AWS credentials) in the `docker-compose.yml` file as needed.
-- Make sure your data and DVC files are in the same project directory or configure a suitable remote.
-- You can add additional commands or customize the services as required.
+## 📜 License & Citation
 
-## AWS S3 and GitHub Actions Integration with Docker
+Free to use/adapt. Please cite Hugging Face Transformers & DVC/MLflow in research/demos.
 
-### 1. Set AWS Secrets in GitHub
-- In your repository settings on GitHub, add the following secrets:
-  - `AWS_ACCESS_KEY_ID`
-  - `AWS_SECRET_ACCESS_KEY`
-  - (Optional) `AWS_DEFAULT_REGION` (e.g., us-east-1)
+📌 Diagram available at: `Screenshot 2025-07-23 090851.png`
 
-### 2. Pass secrets to Docker via GitHub Actions
-- In your workflow file (example):
+---
 
-```yaml
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: us-east-1
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Build and run Docker Compose
-        run: |
-          docker-compose up --build --detach
-```
-
-### 3. Configure DVC remote (only once)
-- You can run the following commands manually to set up the remote:
-
-```bash
-dvc remote add -d myremote s3://your-bucket/path
-dvc remote modify myremote region us-east-1
-```
-
-After that, DVC will automatically use the environment variables to connect to S3 when running inside Docker or GitHub Actions.
-
-### 4. Security
-- Never commit credentials or AWS secrets to the code or repository.
-- Always use GitHub Secrets and environment variables. 
-
-## CI/CD Pipeline: GitHub Actions, AWS ECR, and EC2 Deployment
-
-### Overview
-This project uses a professional CI/CD pipeline to automate building, testing, and deploying your application. The pipeline is triggered on every push to the `main` branch and consists of the following steps:
-
-1. **Build Docker Image:** GitHub Actions builds a new Docker image from your code.
-2. **Push to AWS ECR:** The image is tagged and pushed to your AWS Elastic Container Registry (ECR).
-3. **Deploy to EC2:** GitHub Actions connects to your AWS EC2 instance via SSH, pulls the new image from ECR, and restarts the Docker Compose services.
-
-### Requirements
-- **AWS ECR repository** for storing Docker images.
-- **AWS EC2 instance** with Docker and docker-compose installed.
-- **IAM user** with permissions to push to ECR and access EC2.
-- **SSH key** for secure access to EC2.
-
-### Required GitHub Secrets
-Add these secrets to your repository settings:
-- `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`: For AWS programmatic access.
-- `EC2_HOST`: Public IP or DNS of your EC2 instance.
-- `EC2_USER`: Username for SSH (e.g., `ubuntu` for Ubuntu AMIs).
-- `EC2_SSH_KEY`: Private SSH key for accessing EC2 (use the contents, not the file path).
-
-### How It Works
-- On every push to `main`, GitHub Actions will:
-  1. Build the Docker image and tag it with the commit SHA.
-  2. Push the image to your ECR repository.
-  3. SSH into your EC2 instance and run `docker-compose` to pull and restart the services with the new image.
-
-### docker-compose.yml
-- The `docker-compose.yml` file is configured to use the image from ECR using the variables `${ECR_REPOSITORY}` and `${IMAGE_TAG}` for flexibility.
-
-### Customization
-- You can extend the workflow to include tests, notifications, or additional deployment steps as needed.
-
---- 
+Do you want me to also **add architecture and pipeline diagrams** directly in the README so it looks more visually appealing on GitHub? That would make it even more engaging.
