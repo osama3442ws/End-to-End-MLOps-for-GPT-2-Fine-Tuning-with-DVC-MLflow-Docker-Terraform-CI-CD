@@ -1,10 +1,3 @@
-Got it ✅
-I’ll merge the Terraform section into the **emoji-styled English README** I prepared earlier so you’ll have one clean, unified `README.md` that covers **pipeline + Terraform infrastructure + how to run everything**.
-
-Here’s the final version:
-
----
-
 # ✨ Fine-Tune GPT-2 with DVC, MLflow, Docker, Terraform & CI/CD
 
 ## 📜 Project Overview
@@ -262,12 +255,7 @@ docker compose up -d
 
 ---
 
-## 📜 License & Citation
-
-Free to use/adapt. Please cite Hugging Face Transformers & DVC/MLflow in research/demos.
-
 📌 Diagram available at: `Screenshot 2025-07-23 090851.png`
 
 ---
 
-Do you want me to also **add architecture and pipeline diagrams** directly in the README so it looks more visually appealing on GitHub? That would make it even more engaging.
