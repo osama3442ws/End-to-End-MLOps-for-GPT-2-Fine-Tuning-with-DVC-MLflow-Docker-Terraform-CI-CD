@@ -1,0 +1,43 @@
+version: '3.8'
+services:
+  train:
+    image: ${ECR_REPOSITORY}:${IMAGE_TAG}
+    container_name: llmops-train
+    command: ["python", "main.py", "--mode", "train"]
+    volumes:
+      - ./:/app
+    environment:
+      - MLFLOW_TRACKING_URI=sqlite:///mlflow.db
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+    entrypoint: ["bash", "-lc", "dvc pull || true && python main.py --mode train && dvc push || true"]
+    depends_on:
+      - mlflow
+
+  gradio:
+    image: ${ECR_REPOSITORY}:${IMAGE_TAG}
+    container_name: llmops-gradio
+    command: ["python", "fine-tuned_GPT2_model.py"]
+    ports:
+      - "7860:7860"
+    volumes:
+      - ./:/app
+    environment:
+      - MLFLOW_TRACKING_URI=sqlite:///mlflow.db
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+    entrypoint: ["bash", "-lc", "dvc pull || true && python fine-tuned_GPT2_model.py"]
+    depends_on:
+      - train
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.11.3
+    container_name: mlflow-server
+    command: mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow.db
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/app/mlruns
+      - ./mlflow.db:/app/mlflow.db 

@@ -1,0 +1,51 @@
+stages:
+  preprocess:
+    cmd: python data_processing.py --input creative_writing_dataset.csv --csv_out cleaned_creative_writing_dataset.csv
+    deps:
+      - data_processing.py
+      - creative_writing_dataset.csv
+    outs:
+      - cleaned_creative_writing_dataset.csv
+
+  tokenize:
+    cmd: python data_processing.py --input ${data.data_file} --output artifacts/processed
+    deps:
+      - data_processing.py
+      - ${data.data_file}
+    outs:
+      - artifacts/processed
+    params:
+      - training.max_length
+      - data.text_column
+      - data.target_column
+
+  train:
+    cmd: python main.py --mode train
+    deps:
+      - model.py
+      - main.py
+      - inference.py
+      - config.py
+      - artifacts/processed
+    outs:
+      - ${model.output_dir}
+    metrics:
+      - ${training.metrics_file}:
+          cache: false
+    params:
+      - training.learning_rate
+      - training.per_device_train_batch_size
+      - training.num_train_epochs
+      - training.weight_decay
+      - training.early_stopping_patience
+      - training.max_length
+
+  generate:
+    cmd: python inference.py --save --outdir artifacts/samples
+    deps:
+      - inference.py
+      - config.py
+      - ${model.output_dir}
+    outs:
+      - artifacts/samples
+

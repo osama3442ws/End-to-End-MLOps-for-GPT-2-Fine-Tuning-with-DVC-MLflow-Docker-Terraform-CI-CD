@@ -1,0 +1,25 @@
+data:
+  data_file: cleaned_creative_writing_dataset.csv
+  text_column: cleaned_text
+  target_column: text
+
+model:
+  name: gpt2
+  output_dir: fine_tuned_gpt2
+
+training:
+  learning_rate: 2e-5
+  per_device_train_batch_size: 1
+  num_train_epochs: 1
+  weight_decay: 0.01
+  early_stopping_patience: 3
+  max_length: 128
+  test_size: 0.2
+  metrics_file: metrics.json
+
+inference:
+  generation_max_length: 1000
+  temperature: 1.5
+  top_k: 100
+  prompt: "Write a story about a girl's adventures in a magical forest where she finds strange creatures"
+

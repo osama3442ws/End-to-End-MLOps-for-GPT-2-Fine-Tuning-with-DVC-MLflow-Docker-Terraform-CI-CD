@@ -1,0 +1,57 @@
+name: CI/CD Pipeline - Build, Push to ECR, Deploy to EC2
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: <your-ecr-repo-url> # e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com/your-repo
+  IMAGE_TAG: ${{ github.sha }}
+  EC2_HOST: ${{ secrets.EC2_HOST }}
+  EC2_USER: ${{ secrets.EC2_USER }}
+  EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        run: |
+          docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
+
+      - name: Push Docker image to ECR
+        run: |
+          docker push $ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ env.EC2_SSH_KEY }}
+
+      - name: Deploy on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST '
+            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY &&
+            docker pull $ECR_REPOSITORY:$IMAGE_TAG &&
+            docker-compose down || true &&
+            IMAGE_TAG=$IMAGE_TAG ECR_REPOSITORY=$ECR_REPOSITORY docker-compose up -d
+          '
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }} 

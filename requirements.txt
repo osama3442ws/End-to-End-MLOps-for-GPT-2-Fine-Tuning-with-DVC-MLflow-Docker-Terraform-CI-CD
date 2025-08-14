@@ -1,0 +1,12 @@
+transformers
+datasets
+mlflow
+torch
+pandas
+scikit-learn
+sqlalchemy
+gunicorn
+gradio
+pyngrok 
+pyyaml
+dvc[s3]
